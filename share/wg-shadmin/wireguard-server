@@ -1,0 +1,118 @@
+#!/bin/sh
+#--------------------------------------------------------------------------------+
+# BSD 3-Clause License
+#
+# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+server::init::config() {
+	local _server_ip="$1"
+	local _server_port="$2"
+	local _server_interface="$3"
+	local _server_network="$4"
+	local _server_interface_ip="$5"
+
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_endpoint" "${_server_ip}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_port" "${_server_port}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface" "${_server_interface}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface_ip" "${_server_interface_ip}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_network" "${_server_network}"
+}
+
+server::init::config::keys() {
+	local _server_privkey
+	local _server_pubkey
+
+	_server_privkey=$(server::generate::privkey)
+        _server_pubkey=$(server::generate::pubkey ${_server_privkey})
+
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_privkey" "${_server_privkey}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_pubkey" "${_server_pubkey}"
+}
+
+server::generate::config() {
+	local _client_file="$1"
+	local _host_list
+	local _host_active
+	local _ip_address
+	local _public_key
+	local _private_key
+	local _preshared_key
+
+	if [ -f "${_client_file}" ]; then
+		_host_list=$(grep "peer.*_ip=" ${_client_file} | cut -d '"' -f2 | sort -t . -k 3,3n -k 4,4n)
+
+		util::create::file "${WG_ETC}/${wireguard_interface}.conf"
+
+		echo "[Interface]" > "${WG_ETC}/${wireguard_interface}.conf"
+		echo "PrivateKey = ${wireguard_server_privkey}" >> "${WG_ETC}/${wireguard_interface}.conf"
+		echo "ListenPort = ${wireguard_port}" >> "${WG_ETC}/${wireguard_interface}.conf"
+		echo " " >> "${WG_ETC}/${wireguard_interface}.conf"
+
+		for _host in ${_host_list}
+		do
+			_host_active=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+
+			if [ "${_host_active}" = "YES" ]; then
+				_ip_address=${_host}
+				_private_key=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_privkey= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+				_preshared_key=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_preshared= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+				_public_key=$(client::generate::pubkey "${_private_key}")
+
+				echo "[Peer]" >> "${WG_ETC}/${wireguard_interface}.conf"
+				echo "PublicKey = ${_public_key}" >> "${WG_ETC}/${wireguard_interface}.conf"
+				echo "AllowedIPs = ${_ip_address}/32" >> "${WG_ETC}/${wireguard_interface}.conf"
+				if [ "${_preshared_key}" != "NO"  ]; then
+					echo "PresharedKey = ${_preshared_key}" >> "${WG_ETC}/${wireguard_interface}.conf"
+				fi
+				echo " " >> "${WG_ETC}/${wireguard_interface}.conf"
+			fi
+		done
+
+		return 0
+	else
+		return 1
+	fi
+}
+
+server::generate::privkey() {
+        local _server_private_key
+
+        _server_private_key=$(${WG_BIN} genkey)
+
+        echo ${_server_private_key}
+}
+
+server::generate::pubkey() {
+        local _server_private_key="$1"
+        local _server_public_key
+
+        _server_public_key=$(echo ${_server_private_key} | ${WG_BIN} pubkey)
+
+        echo ${_server_public_key}
+}

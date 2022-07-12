@@ -1,0 +1,241 @@
+#!/bin/sh
+#--------------------------------------------------------------------------------+
+# BSD 3-Clause License
+#
+# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+client::init::config() {
+	local _client_allowedips="$1"
+	local _client_dns="$2"
+
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_allowedips" "${_client_allowedips}"
+	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_dns" "${_client_dns}"
+}
+
+client::generate::privkey() {
+	local _client_private_key
+
+	_client_private_key=$(${WG_BIN} genkey)
+
+	echo ${_client_private_key}
+}
+
+client::generate::pubkey() {
+	local _client_private_key="$1"
+	local _client_public_key
+
+	_client_public_key=$(echo ${_client_private_key} | ${WG_BIN} pubkey)
+
+	echo ${_client_public_key}
+}
+
+client::generate::pskkey() {
+	local _client_psk_key
+
+	_client_psk_key=$(${WG_BIN} genpsk)
+
+	echo ${_client_psk_key}
+}
+
+client::generate::ip() {
+	local _client_file="$1"
+	local _client_ip
+	local _last_digit
+
+	if [ -f "${_client_file}" ]; then
+		_last_digit=$(grep "peer.*_ip=" ${_client_file} | cut -d '"' -f2 | sort -t . -k 3,3n -k 4,4n | tail -n 1 | cut -d '.' -f4)
+
+		if [ -z "${_last_digit}" ]; then
+			_last_digit=2
+		else
+			_last_digit=$((_last_digit + 1))
+		fi
+	else
+		_last_digit=2
+	fi
+
+	_client_ip=$(echo "${wireguard_network}" | sed "s/[^.]*$/${_last_digit}/")
+
+	echo ${_client_ip}
+}
+
+client::generate::file() {
+	local _client_ip
+	local _client_group
+	local _client_keepalive
+	local _client_privkey
+	local _client_preshared
+	local _client_peer="$1"
+	local _client_file="$2"
+
+	_client_privkey=$(grep -w "${_client_peer}_privkey=" ${_client_file} | cut -d '"' -f2)
+	_client_ip=$(grep -w "${_client_peer}_ip=" ${_client_file} | cut -d '"' -f2)
+	_client_group=$(grep -w "${_client_peer}_group=" ${_client_file} | cut -d '"' -f2)
+	_client_keepalive=$(grep -w "${_client_peer}_keepalive=" ${_client_file} | cut -d '"' -f2)
+	_client_preshared=$(grep -w "${_client_peer}_preshared=" "${_client_file}" | cut -d '"' -f2)
+
+	if [ -n "${_client_privkey}" ]; then
+		util::create::dire "${ETCPATH}/peers/${_client_group}"
+		util::create::file "${ETCPATH}/peers/${_client_group}/${_client_ip}.conf"
+
+		cat "${ETCPATH}/template/wg-shadmin-client.template" | sed -e "s|%%WIREGUARD_PRIVATE_KEY%%|${_client_privkey}|" \
+			-e "s|%%WIREGUARD_CLIENT_IP%%|${_client_ip}\/32|g" \
+			-e "s|%%WIREGUARD_DNS%%|${wireguard_dns}|g" \
+			-e "s|%%WIREGUARD_PUBLIC_SERVER_KEY%%|${wireguard_server_pubkey}|g" \
+			-e "s|%%WIREGUARD_ALLOWEDIPS%%|${wireguard_allowedips}|g" \
+			-e "s|%%WIREGUARD_SERVER%%|${wireguard_server_endpoint}|g" \
+			-e "s|%%WIREGUARD_KEEPALIVE%%|${_client_keepalive}|g" \
+			-e "s|%%WIREGUARD_PORT%%|${wireguard_port}|g" > "${ETCPATH}/peers/${_client_group}/${_client_ip}.conf"
+		if [ "${_client_preshared}" != "NO" ]; then
+			echo "PresharedKey = ${_client_preshared}" >> "${ETCPATH}/peers/${_client_group}/${_client_ip}.conf"
+		fi
+		return 0
+	else
+		return 1
+	fi
+}
+
+client::generate::qrcode() {
+	local _client_file="$1"
+
+	${QRENCODE_BIN} -t ansiutf8 < ${_client_file}
+}
+
+client::list() {
+	local _file="$1"
+	local _checkbox="$2"
+	local _client
+	local _client_peer
+	local _client_ip
+	local _client_fullname
+	local _client_list=""
+	local _n=0
+
+	for _client in $(grep "peer.*" ${_file} | cut -d "_" -f1 | sort -u)
+	do
+		_n=$((n+1))
+		_client_peer=${_client}
+		_client_desc=$(grep "${_client}_ip" ${_file} | cut -d '"' -f2)
+		_client_fullname=$(grep "${_client}_fullname" ${_file} | cut -d '"' -f2)
+
+		if [ ${_checkbox} -eq 0 ]; then
+			_client_active=$(grep "${_client}_active" ${_file} | cut -d '"' -f2 )
+
+			if [ "${_client_active}" = "YES" ]; then
+				_client_list="${_client_list} $(echo ${_client_peer} \"${_client_desc} ${_client_fullname}\" on)"
+			else
+				_client_list="${_client_list} $(echo ${_client_peer} \"${_client_desc} ${_client_fullname}\" off)"
+			fi
+		else
+			if [ ${_n} -eq 1 ]; then
+				_client_list="${_client_list} $(echo ${_client_peer} \"${_client_desc} ${_client_fullname}\" on)"
+			else
+				_client_list="${_client_list} $(echo ${_client_peer} \"${_client_desc} ${_client_fullname}\" off)"
+			fi
+		fi
+	done
+
+	echo ${_client_list}
+}
+
+client::remove() {
+	local _client_peer="$1"
+	local _network_file="$2"
+
+	sed -i "" "/${_client_peer}/d" "${_network_file}"
+}
+
+client::save() {
+	local _private_key
+	local _preshared_key
+	local _peer
+	local _client_ip="$1"
+	local _client_active="$2"
+	local _have_preshared="$3"
+	local _client_keepalive="$4"
+	local _client_fullname="$5"
+	local _client_group="$6"
+
+	util::create::file "${ETCPATH}/wg-shadmin-clients.conf"
+
+	_private_key=$(client::generate::privkey)
+
+	if [ "${_have_preshared}" = "YES" ]; then
+		_preshared_key="$(client::generate::pskkey)"
+	else
+		_preshared_key="NO"
+	fi
+
+	_peer=$(util::peer::generate::id "${ETCPATH}/wg-shadmin-clients.conf")
+
+	echo "# Peer${_peer}" >> "${ETCPATH}/wg-shadmin-clients.conf"
+	echo "peer${_peer}_ip=\"${_client_ip}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_active=\"${_client_active}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_privkey=\"${_private_key}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_preshared=\"${_preshared_key}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_keepalive=\"${_client_keepalive}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_fullname=\"${_client_fullname}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+        echo "peer${_peer}_group=\"${_client_group}\"" >> "${ETCPATH}/wg-shadmin-clients.conf"
+}
+
+client::update() {
+        local _peer
+        local _private_key
+        local _preshared_key
+        local _client_peer="$1"
+        local _client_active="$2"
+        local _request_privkey="$3"
+        local _request_preshared="$4"
+        local _client_keepalive="$5"
+        local _client_fullname="$6"
+        local _client_group="$7"
+
+	if [ "${_request_privkey}" = "YES" ]; then
+	        _private_key=$(client::generate::privkey)
+	else
+		_private_key="NO"
+	fi
+
+        if [ "${_request_preshared}" = "YES" ]; then
+                _preshared_key="$(client::generate::pskkey)"
+        else
+                _preshared_key="NO"
+        fi
+
+	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_active" "${_client_active}"
+
+	if [ "${_request_privkey}" = "YES" ]; then
+		util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_privkey" "${_private_key}"
+	fi
+
+	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_preshared" "${_preshared_key}"
+	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_keepalive" "${_client_keepalive}"
+	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_fullname" "${_client_fullname}"
+	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_client_peer}_group" "${_client_group}"
+}

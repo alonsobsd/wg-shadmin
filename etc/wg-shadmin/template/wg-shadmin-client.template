@@ -1,0 +1,10 @@
+[Interface]
+PrivateKey = %%WIREGUARD_PRIVATE_KEY%%
+Address = %%WIREGUARD_CLIENT_IP%%
+DNS = %%WIREGUARD_DNS%%
+
+[Peer]
+PublicKey = %%WIREGUARD_PUBLIC_SERVER_KEY%%
+AllowedIPs = %%WIREGUARD_ALLOWEDIPS%%
+Endpoint = %%WIREGUARD_SERVER%%:%%WIREGUARD_PORT%%
+PersistentKeepalive = %%WIREGUARD_KEEPALIVE%%

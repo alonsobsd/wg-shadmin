@@ -1,0 +1,83 @@
+#!/bin/sh
+#--------------------------------------------------------------------------------+
+# BSD 3-Clause License
+#
+# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+_os_name=$(uname -s)
+_current_user=$(id -un)
+
+if [ "${_current_user}" == "root" ]; then
+	echo "Hello!"
+else
+	echo "ERROR: wg-shadmin must be running like root user"
+	exit 1
+fi
+
+if [ -d "./share/wg-shadmin" ]; then
+	LIBPATH="./share/wg-shadmin"
+	ETCPATH="./etc/wg-shadmin"
+elif [ -d "/usr/local/share/wg-shadmin" ]; then
+	LIBPATH="/usr/local/share/wg-shadmin"
+	if [ "${_os_name}" == "OpenBSD" ]; then
+		ETCPATH="/etc/wg-shadmin"
+	else
+		ETCPATH="/usr/local/etc/wg-shadmin"
+	fi
+else
+	echo "ERROR: unable to locate ${ETCPATH}/wg-shadmin directory"
+	exit 1
+fi
+
+if [ ! -f "${ETCPATH}/wg-shadmin.conf" ]; then
+	echo "ERROR: unable to locate ${ETCPATH}/wg-shadmin.conf file"
+
+	read -p "Do you want create it from sample file? y/n: " _answer
+
+	if [ "${_answer}" = "y" ]; then
+		touch "${ETCPATH}/wg-shadmin.conf"
+		chown root:wheel "${ETCPATH}/wg-shadmin.conf"
+		chmod 660 "${ETCPATH}/wg-shadmin.conf"
+
+		cat "${ETCPATH}/sample/wg-shadmin.conf.sample" > "${ETCPATH}/wg-shadmin.conf"
+	else
+		exit 1
+	fi
+fi
+
+. "${ETCPATH}/wg-shadmin.conf"
+. "${LIBPATH}/wireguard-init"
+. "${LIBPATH}/wireguard-util"
+. "${LIBPATH}/wireguard-client"
+. "${LIBPATH}/wireguard-group"
+. "${LIBPATH}/wireguard-server"
+
+util::dependencies::check
+
+tui::init

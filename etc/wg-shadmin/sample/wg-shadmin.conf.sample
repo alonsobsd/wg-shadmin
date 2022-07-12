@@ -1,0 +1,27 @@
+#
+# Wireguard tools configuration section
+#
+
+DIALOG_BIN="/usr/bin/dialog"
+QRENCODE_BIN="/usr/local/bin/qrencode"
+WG_BIN="/usr/local/bin/wg"
+WG_ETC="/usr/local/etc/wireguard"
+
+#
+# Wireguard general configuration section
+#
+
+wireguard_server_endpoint="IP OR DOMAIN"
+wireguard_port="51820"
+wireguard_interface="wg0"
+wireguard_interface_ip="10.0.0.1"
+wireguard_network="10.0.0.0/24"
+wireguard_allowedips="10.0.0.0/24, 192.168.0.0/24, 192.168.1.0/24"
+wireguard_dns="10.0.0.1"
+
+#
+# Wireguard server configuration section
+#
+
+wireguard_server_privkey="server private key"
+wireguard_server_pubkey="server public key"

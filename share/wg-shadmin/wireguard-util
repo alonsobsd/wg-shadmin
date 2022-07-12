@@ -1,0 +1,481 @@
+#!/bin/sh
+#--------------------------------------------------------------------------------+
+# BSD 3-Clause License
+#
+# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+util::dependencies::check() {
+	local _check
+
+	if [ ! -d "${WG_ETC}" ]; then
+		echo "ERROR: Can not detect wireguard configuration directory: ${WG_ETC}"
+		exit 1
+	fi
+
+	if [ ! -f "${WG_BIN}" ]; then
+		if [ "${_os_name}" == "FreeBSD" ]; then
+			echo "ERROR: Can not detect wireguard tool binary: ${WG_BIN}. wireguard-tools-lite must be installed"
+		else
+			echo "ERROR: Can not detect wireguard tool binary: ${WG_BIN}. wireguard-tools must be installed"
+		fi
+		exit 1
+	fi
+
+	if [ ! -f "${DIALOG_BIN}" ]; then
+		echo "ERROR: Can not detect dialog tool: ${DIALOG_BIN}. dialog or dialog-like tool must be installed"
+		exit 1
+	fi
+
+	_check=$(ifconfig ${wireguard_interface} | grep inet | cut -d ' ' -f2)
+
+	if [ "${_check}" != "${wireguard_interface_ip}" ]; then
+		echo "ERROR: Can not detect \"${wireguard_interface}\" interface. \"${wireguard_interface}\" must be created"
+		exit 1
+	fi
+
+	if [ "${_os_name}" == "FreeBSD" ]; then
+		_check=$(kldstat -q -n if_wg)
+
+		if [ "$?" -eq "1" ]; then
+			echo "ERROR: Can not detect if_wga module loaded. wireguard-kmod must be installed"
+			exit 1
+		fi
+	fi
+
+	if [ "${_os_name}" == "OpenBSD" ]; then
+		if [! -f "/etc/hostname.wg0" ]; then
+			echo "ERROR: Can not detect wireguard device configuration: /etc/hostname.wg0"
+			exit 1
+		fi
+	fi
+
+	return 0
+}
+
+util::apply::config() {
+	${WG_BIN} syncconf ${wireguard_interface} "${WG_ETC}/${wireguard_interface}.conf"
+
+	return 0
+}
+
+util::make::backup() {
+	local _date="$1"
+
+	util::create::dire "${ETCPATH}/backup/${_date}"
+	cp -R ${ETCPATH}/wg-shadmin*.conf "${ETCPATH}/backup/${_date}/"
+
+	return 0
+}
+
+util::pause() {
+	read -p "Press enter to continue ..." _
+}
+
+util::remove::lines() {
+	local _file="$1"
+
+	sed -i "" '/^$/d' ${_file}
+}
+
+util::remove::config::files() {
+	find "${ETCPATH}/peers" -type f -name "*.conf" -exec rm "{}" \;
+
+	return 0
+}
+
+util::create::dire() {
+        local _dire="$1"
+
+	mkdir -p -m 770 "${_dire}"
+
+        return 0
+}
+
+util::create::file() {
+	local _file="$1"
+
+	if [ ! -f "${_file}" ]; then
+		touch "${_file}"
+	fi
+
+	chown root:wheel "${_file}"
+	chmod 660 "${_file}"
+
+	return 0
+}
+
+util::peer::generate::id () {
+        local _file="$1"
+        local _n
+
+	if [ -f ${_file} ]; then
+		_n=$(grep "peer.*_ip=" ${_file} | cut -d '_' -f1 | sort -u | tail -n 1 | cut -d 'r' -f2)
+	else
+		_n=0
+	fi
+
+	_n=$((_n+1))
+
+        echo ${_n}
+}
+
+
+util::string::lowercase() {
+	local _string="$1"
+
+	echo ${nombre} | tr '[[:upper:]]' '[[:lower:]]'
+}
+
+util::string::uppercase() {
+	local _string="$1"
+
+	echo ${_string} | tr '[[:lower:]]' '[[:upper:]]'
+}
+
+util::config::set() {
+	local _file="$1"
+	local _variable="$2"
+	local _value="$3"
+
+	sed -i "" "/^${_variable}=/s/=.*/=\"${_value}\"/" ${_file}
+}
+
+util::config::get() {
+        local _file="$1"
+        local _variable="$2"
+        local _value
+
+	_value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
+
+	echo ${_value}
+}
+
+util::config::get::exists() {
+        local _file="$1"
+        local _variable="$2"
+        local _value
+
+        _value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
+
+	if [ -z "${_value}" ]; then
+		_value=1
+	else
+		_value=0
+	fi
+
+        echo ${_value}
+}
+
+util::validate::ip::format() {
+	local _ip="$1"
+        local _oct1
+        local _oct2
+        local _oct3
+        local _oct4
+        local _check
+
+        _oct1=$(echo ${_ip} | cut -d "." -f1 | bc)
+        _oct2=$(echo ${_ip} | cut -d "." -f2 | bc)
+        _oct3=$(echo ${_ip} | cut -d "." -f3 | bc)
+        _oct4=$(echo ${_ip} | cut -d "." -f4 | bc)
+
+        _ip="${_oct1}.${_oct2}.${_oct3}.${_oct4}"
+
+        _check=$(echo ${_ip} | egrep '^([0-9]{1,3}[.]){3}([0-9]{1,3})$')
+
+        if [ "${_ip}" = "${_check}" ]; then
+                _oct1=$(echo ${_ip} | cut -d "." -f1 | bc)
+                _oct2=$(echo ${_ip} | cut -d "." -f2 | bc)
+                _oct3=$(echo ${_ip} | cut -d "." -f3 | bc)
+                _oct4=$(echo ${_ip} | cut -d "." -f4 | bc)
+
+                if [ ${_oct1} -le 255 ] && [ ${_oct1} -gt 0 ] && [ ${_oct2} -le 255 ] && [ ${_oct3} -le 255 ] && [ ${_oct4} -lt 255 ] && [ ${_oct4} -gt 0 ]; then
+                        _check="${_ip}"
+                else
+                        _check=1
+                fi
+        else
+                _check=1
+        fi
+
+        echo ${_check}
+}
+
+util::validate::ip::cidr() {
+	local _cidr="$1"
+	local _check
+
+	_check=1
+
+	if [ $cidr -le 32 ] && [ $cidr -ge 8 ]; then
+		_check=0
+	fi
+
+	return ${_check}
+}
+
+util::check::octect() {
+	local _oct="$1"
+	local _firstoct="$2"
+	local _lastoct="$3"
+
+	if [ ${_oct} -ge ${_firstoct} ] && [ ${_oct} -le ${_lastoct} ]; then
+		echo 0
+	else
+		echo 1
+	fi
+}
+
+util::convert::bin::dec() {
+        local _ipbin="$1"
+        local _ipdec=""
+        local _oct
+
+        for _oct in $(echo ${_ipbin} | fold -w 8)
+        do
+                _ipdec=${_ipdec}$(echo "ibase=2;${_oct}" | bc -l)"."
+        done
+
+        echo ${_ipdec} | sed 's|.$||g'
+}
+
+util::convert::dec::bin() {
+        local _network="$1"
+        local _oct1 _oct2 _oct3 _oct4
+        local _dec1 _dec2 _dec3 _dec4
+        local _ipbin
+
+        _network=$(echo ${_network} | cut -d "/" -f1)
+
+        _oct1=$(echo ${_network} | cut -d "." -f1)
+        _oct2=$(echo ${_network} | cut -d "." -f2)
+        _oct3=$(echo ${_network} | cut -d "." -f3)
+        _oct4=$(echo ${_network} | cut -d "." -f4)
+
+        _dec1=$(echo "obase=2;${_oct1}" | bc -l)
+        _dec2=$(echo "obase=2;${_oct2}" | bc -l)
+        _dec3=$(echo "obase=2;${_oct3}" | bc -l)
+        _dec4=$(echo "obase=2;${_oct4}" | bc -l)
+
+        _dec1=$(util::add::zeros "${_dec1}")
+        _dec2=$(util::add::zeros "${_dec2}")
+        _dec3=$(util::add::zeros "${_dec3}")
+        _dec4=$(util::add::zeros "${_dec4}")
+
+        _ipbin="${_dec1}${_dec2}${_dec3}${_dec4}"
+
+        echo ${_ipbin}
+}
+
+util::add::zeros() {
+        local _oct="$1"
+        local _octbin=""
+        local _digit _i _n
+
+        _n=0
+
+        for _digit in $(echo ${_oct} | fold -w 1)
+        do
+                _n=$((${_n}+1))
+                _octbin="${_octbin}${_digit}"
+        done
+
+        if [ ${_n} -lt 8 ]; then
+                for _i in $(seq ${_n} 7)
+                do
+                        _octbin="0${_octbin}"
+                done
+        fi
+
+        echo ${_octbin}
+}
+
+util::get::network::ip() {
+        local _network="$1"
+        local _cidr
+        local _digit _n
+        local _network_ip=""
+
+        _cidr=$(echo ${_network} | cut -d "/" -f2)
+        _network=$(util::convert::dec::bin "${_network}")
+        _n=0
+
+        for _digit in $(echo ${_network} | fold -w 1)
+        do
+                _n=$((${_n}+1))
+                if [ ${_n} -le ${_cidr} ]; then
+                        _network_ip=${_network_ip}${_digit}
+                else
+                        _network_ip=${_network_ip}"0"
+                fi
+        done
+
+        echo ${_network_ip}
+}
+
+util::get::broadcast::ip() {
+        local _network="$1"
+        local _cidr
+        local _digit _n
+        local _broadcast_ip=""
+
+        _cidr=$(echo ${_network} | cut -d "/" -f2)
+        _network=$(util::convert::dec::bin "${_network}")
+        _n=0
+
+        for _digit in $(echo ${_network} | fold -w 1)
+        do
+                _n=$((${_n}+1))
+                if [ ${_n} -le ${_cidr} ]; then
+                        _broadcast_ip=${_broadcast_ip}${_digit}
+                else
+                        _broadcast_ip=${_broadcast_ip}"1"
+                fi
+        done
+
+        echo ${_broadcast_ip}
+}
+
+util::get::host::count() {
+        local _network="$1"
+        local _cidr
+        local _count
+
+        _cidr=$(echo ${_network} | cut -d "/" -f2)
+        _count=$(echo "2^(32-${_cidr})" | bc -l)
+
+        echo ${_count}
+}
+
+util::get::first::host() {
+        local _ip="$1"
+        local _oct
+
+        _oct=$(echo ${_ip} | cut -d "." -f4)
+        _ip=$(echo ${_ip} | cut -d"." -f1-3)
+
+        _oct=$((${_oct}+1))
+
+        echo ${_ip}"."${_oct}
+}
+
+util::get::last::host() {
+        local _ip="$1"
+        local _oct
+
+        _oct=$(echo ${_ip} | cut -d "." -f4)
+        _ip=$(echo ${_ip} | cut -d"." -f1-3)
+
+        _oct=$((${_oct}-1))
+
+        echo ${_ip}"."${_oct}
+}
+
+util::check::host() {
+	local _network="$1"
+	local _ip="$2"
+	local _ip1 _ip2 _ip3 _ip4
+	local _f1 _f2 _f3 _f4
+	local _l1 _l2 _l3 _l4
+	local _r1 _r2 _r3 _r4
+	local _firstip _lastip
+
+	_firstip=$(util::get::network::ip "${_network}")
+	_firstip=$(util::get::first::host $(util::convert::bin::dec "${_firstip}"))
+
+	_lastip=$(util::get::broadcast::ip "${_network}")
+	_lastip=$(util::get::last::host $(util::convert::bin::dec "${_lastip}"))
+
+	_ip1=$(echo ${_ip} | cut -d '.' -f1)
+	_ip2=$(echo ${_ip} | cut -d '.' -f2)
+	_ip3=$(echo ${_ip} | cut -d '.' -f3)
+	_ip4=$(echo ${_ip} | cut -d '.' -f4)
+
+	_f1=$(echo ${_firstip} | cut -d '.' -f1)
+	_f2=$(echo ${_firstip} | cut -d '.' -f2)
+	_f3=$(echo ${_firstip} | cut -d '.' -f3)
+	_f4=$(echo ${_firstip} | cut -d '.' -f4)
+
+	_l1=$(echo ${_lastip} | cut -d '.' -f1)
+	_l2=$(echo ${_lastip} | cut -d '.' -f2)
+	_l3=$(echo ${_lastip} | cut -d '.' -f3)
+	_l4=$(echo ${_lastip} | cut -d '.' -f4)
+
+	_r1=$(util::check::octect "${_ip1}" "${_f1}" "${_l1}")
+	_r2=$(util::check::octect "${_ip2}" "${_f2}" "${_l2}")
+	_r3=$(util::check::octect "${_ip3}" "${_f3}" "${_l3}")
+	_r4=$(util::check::octect "${_ip4}" "${_f4}" "${_l4}")
+
+	if [ ${_r1} -eq 0 ] && [ ${_r2} -eq 0 ] && [ ${_r3} -eq 0 ] && [ ${_r4} -eq 0 ]; then
+		echo 0
+	else
+		echo 1
+	fi
+}
+
+util::generate::host::ip() {
+	local _network="$1"
+	local _nhost _host
+	local _ip
+	local _oct1 _oct2 _oct3 _oct4
+	local _n
+
+	_nhost=$(util::get::host::count "${_network}")
+	_nhost=$((${_nhost}-2))
+
+	_network=$(util::get::network::ip "${_network}")
+	_host=$(util::get::first::host $(util::convert::bin::dec "${_network}"))
+
+	_oct4=$(echo ${_host} | cut -d "." -f4)
+	_oct3=$(echo ${_host} | cut -d "." -f3)
+	_oct2=$(echo ${_host} | cut -d "." -f2)
+	_oct1=$(echo ${_host} | cut -d "." -f1)
+
+	for _n in $(seq 1 ${_nhost})
+	do
+		if [ ${_oct4} -le 255 ]; then
+			_ip=${_oct1}"."${_oct2}"."${_oct3}"."${_oct4}
+			_oct4=$((${_oct4}+1))
+		elif [ ${_oct3} -le 255 ]; then
+			_oct4=1
+			_oct3=$((oct3+1))
+			_ip=${_oct1}"."${_oct2}"."${_oct3}"."${_oct4}
+		elif [ ${_oct2} -le 255 ]; then
+			_oct3=1
+			_oct2=$((${_oct2}+1))
+			_ip=${_oct1}"."${_oct2}"."${_oct3}"."${_oct4}
+		elif [ ${_oct1} -le 255 ]; then
+			_oct2=1
+			_oct1=$((${_oct1}+1))
+			_ip=${_oct1}"."${_oct2}"."${_oct3}"."${_oct4}
+		fi
+
+		echo ${_ip}
+	done
+}
