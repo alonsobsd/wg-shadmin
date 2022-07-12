@@ -52,11 +52,14 @@ util::dependencies::check() {
 		exit 1
 	fi
 
-	_check=$(ifconfig ${wireguard_interface} | grep inet | cut -d ' ' -f2)
+	_check=$(ifconfig ${wireguard_interface})
 
-	if [ "${_check}" != "${wireguard_interface_ip}" ]; then
-		echo "ERROR: Can not detect \"${wireguard_interface}\" interface. \"${wireguard_interface}\" must be created"
+	if [ "$?" != "0" ]; then
+		echo "ERROR: Can not detect \"${wireguard_interface}\" interface. \"${wireguard_interface}\" must be created before of running wg-shadmin"
 		exit 1
+	else
+		_check=$(ifconfig ${wireguard_interface} | grep inet | cut -d ' ' -f2)
+		util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface_ip" "${_check}"
 	fi
 
 	if [ "${_os_name}" == "FreeBSD" ]; then
@@ -162,6 +165,8 @@ util::config::set() {
 	local _file="$1"
 	local _variable="$2"
 	local _value="$3"
+
+	_value=$(echo ${_value} | sed -e "s#/#\\\/#g")
 
 	sed -i "" "/^${_variable}=/s/=.*/=\"${_value}\"/" ${_file}
 }
