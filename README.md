@@ -69,7 +69,7 @@ Start wireguard device
 # sh /etc/netstart wg0
 ```
 
-## wg-shadmin files
+## Running wg-shadmin
 wg-shadmin can running from current directory but the best is copy its files and directories to right paths
 
 ```sh
@@ -84,7 +84,7 @@ wg-shadmin can running from current directory but the best is copy its files and
 # find /usr/local/etc/wg-shadmin -type d -exec chmod 750 "{}" \;
 # find /usr/local/etc/wg-shadmin -type f -exec chmod 640 "{}" \;
 ```
-On first time running wg-shadmin, it will try copy wg-shadmin.conf.sample to /usr/local/etc/wg-shadmin/ or /etc/wg-shadmin
+On first time, wg-shadmin will try copy wg-shadmin.conf.sample to /usr/local/etc/wg-shadmin/ or /etc/wg-shadmin
 
 ```sh
 root@freebsd:~ # wg-shadmin
@@ -92,7 +92,9 @@ Hello!
 ERROR: unable to locate /usr/local/etc/wg-shadmin/wg-shadmin.conf file
 Do you want create it from sample file? y/n:
 ```
-Edit manually /usr/local/etc/wg-shadmin/wg-shadmin.conf if wg-shadmin doesn't work how you are expecting
+You can edit **/usr/local/etc/wg-shadmin/wg-shadmin.conf** configuration file from **Server management** section. Edit manually it if **wg-shadmin** doesn't work how you are expecting.
+
+If everything is working fine, take on mind all changes are applied to wireguard server when **Apply configuration** is selected at **Server management** section.
 
 ## License
 wg-shadmin is released under the BSD-3 license. See the LICENSE file for a full copy of the license.
