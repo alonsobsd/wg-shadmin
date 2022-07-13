@@ -51,7 +51,7 @@ elif [ -d "/usr/local/share/wg-shadmin" ]; then
 		ETCPATH="/usr/local/etc/wg-shadmin"
 	fi
 else
-	echo "ERROR: unable to locate ${ETCPATH}/wg-shadmin directory"
+	echo "ERROR: unable to locate wg-shadmin configuration directory"
 	exit 1
 fi
 
