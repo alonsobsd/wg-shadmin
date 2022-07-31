@@ -97,7 +97,8 @@ util::make::backup() {
 }
 
 util::pause() {
-	read -p "Press enter to continue ..." _
+	echo "Press enter to continue ..."
+	read _
 }
 
 util::remove::lines() {

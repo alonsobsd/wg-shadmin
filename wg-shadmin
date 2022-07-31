@@ -58,7 +58,8 @@ fi
 if [ ! -f "${ETCPATH}/wg-shadmin.conf" ]; then
 	echo "ERROR: unable to locate ${ETCPATH}/wg-shadmin.conf file"
 
-	read -p "Do you want create it from sample file? y/n: " _answer
+	echo "Do you want create it from sample file? y/n: "
+	read _answer
 
 	if [ "${_answer}" = "y" ]; then
 		touch "${ETCPATH}/wg-shadmin.conf"
