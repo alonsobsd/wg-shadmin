@@ -415,7 +415,7 @@ tui::client::add() {
 		_server_subnet=$(util::config::get "${ETCPATH}/wg-shadmin.conf" "wireguard_network")
 		_check=$(util::config::get::exists "${ETCPATH}/wg-shadmin-clients.conf" "${_client_ip}")
 
-		if [ ${_client_ip} -eq 1 ] || [ ${_check} -eq 0 ]; then
+		if [ ${_client_ip} = 1 ] || [ ${_check} -eq 0 ]; then
 			tui::infobox "Add client :: Error" "IP address is not valid or already is used by another peer" "3"
 		else
 			_check=$(util::check::host "${_server_subnet}" "${_client_ip}")
@@ -705,7 +705,7 @@ tui::client::generate::file() {
                 fi
         done
 
-	_client_active=$(grep -w ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+	_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
 	if [ "${_client_active}" = "YES" ]; then
 		client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
@@ -729,7 +729,7 @@ tui::client::generate::files() {
 
 	for _peer in ${_client_list}
 	do
-		_client_active=$(grep -w ${_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+		_client_active=$(grep ${_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
 		if [ "${_client_active}" = "YES" ]; then
 			client::generate::file "${_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
@@ -765,11 +765,11 @@ tui::client::generate::qrcode() {
                 fi
 	done
 
-	_client_active=$(grep -w ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+	_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
 	if [ "${_client_active}" = "YES" ]; then
 		client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
-		client::generate::qrcode "${ETCPATH}/peers/$(grep -w ${_client_peer}_group= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)/$(grep -w ${_client_peer}_ip= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2).conf"
+		client::generate::qrcode "${ETCPATH}/peers/$(grep ${_client_peer}_group= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)/$(grep ${_client_peer}_ip= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2).conf"
 
 		util::pause
 
@@ -830,7 +830,7 @@ tui::client::view() {
 			if [ "$?" -eq "0" ]; then
 				if [ "${_client_active}" = "YES" ]; then
 					client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
-					less "${ETCPATH}/peers/$(grep -w ${_client_peer}_group "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2)/$(grep -w ${_client_peer}_ip "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2).conf"
+					less "${ETCPATH}/peers/$(grep ${_client_peer}_group "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2)/$(grep ${_client_peer}_ip "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2).conf"
 				else
 					tui::infobox "View client" "Can not view this file because ${_client_peer} is not enabled" "2"
 				fi
