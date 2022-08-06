@@ -324,7 +324,7 @@ tui::group::edit() {
                 --radiolist "Select one group:" 15 60 10 \
         3>&1 1>&2 2>&3)
 
-        if [ "$?" -eq "1" ]; then
+        if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
                 return 1
         fi
 
@@ -534,7 +534,7 @@ tui::client::edit() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-                if [ "$?" -eq "1" ]; then
+                if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
                         return 1
                 fi
 
@@ -608,7 +608,7 @@ tui::client::edit() {
                                 --radiolist "Select one group (current: ${_client_group}):" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ]; then
+		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
 			return 1
 		fi
 
@@ -661,7 +661,7 @@ tui::client::activate() {
                                 --checklist "Select one or more peers:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ]; then
+		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
 			return 1
 		fi
 
@@ -694,7 +694,7 @@ tui::client::generate::file() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ]; then
+		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
 			return 1
 		fi
 
@@ -754,7 +754,7 @@ tui::client::generate::qrcode() {
 			--radiolist "Select one peer:" 15 60 10 \
 		3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ]; then
+		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
 			return 1
 		fi
 
@@ -795,8 +795,8 @@ tui::client::view() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-                if [ "$?" -eq "1" ]; then
-                        break;
+                if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
+                        return 1
 		else
 			_client_ip=$(grep "${_client_peer}_ip=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_active=$(grep "${_client_peer}_active=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)

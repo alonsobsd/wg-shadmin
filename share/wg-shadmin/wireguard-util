@@ -72,8 +72,8 @@ util::dependencies::check() {
 	fi
 
 	if [ "${_os_name}" == "OpenBSD" ]; then
-		if [! -f "/etc/hostname.wg0" ]; then
-			echo "ERROR: Can not detect wireguard device configuration: /etc/hostname.wg0"
+		if [ ! -f "/etc/hostname.${wireguard_interface}" ]; then
+			echo "ERROR: Can not detect wireguard device configuration: /etc/hostname.${wireguard_interface}"
 			exit 1
 		fi
 	fi
@@ -169,7 +169,7 @@ util::config::set() {
 
 	_value=$(echo ${_value} | sed -e "s#/#\\\/#g")
 
-	sed -i "" "/^${_variable}=/s/=.*/=\"${_value}\"/" ${_file}
+	sed -e "/^${_variable}=/s/=.*/=\"${_value}\"/" -i "" ${_file}
 }
 
 util::config::get() {
@@ -187,12 +187,16 @@ util::config::get::exists() {
         local _variable="$2"
         local _value
 
-        _value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
+	if [ -f ${_file} ]; then
+	        _value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
 
-	if [ -z "${_value}" ]; then
-		_value=1
+		if [ -z "${_value}" ]; then
+			_value=1
+		else
+			_value=0
+		fi
 	else
-		_value=0
+		_value=1
 	fi
 
         echo ${_value}
