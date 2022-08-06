@@ -94,11 +94,11 @@ client::generate::file() {
 	local _client_peer="$1"
 	local _client_file="$2"
 
-	_client_privkey=$(grep -w "${_client_peer}_privkey=" ${_client_file} | cut -d '"' -f2)
-	_client_ip=$(grep -w "${_client_peer}_ip=" ${_client_file} | cut -d '"' -f2)
-	_client_group=$(grep -w "${_client_peer}_group=" ${_client_file} | cut -d '"' -f2)
-	_client_keepalive=$(grep -w "${_client_peer}_keepalive=" ${_client_file} | cut -d '"' -f2)
-	_client_preshared=$(grep -w "${_client_peer}_preshared=" "${_client_file}" | cut -d '"' -f2)
+	_client_privkey=$(grep "${_client_peer}_privkey=" ${_client_file} | cut -d '"' -f2)
+	_client_ip=$(grep "${_client_peer}_ip=" ${_client_file} | cut -d '"' -f2)
+	_client_group=$(grep "${_client_peer}_group=" ${_client_file} | cut -d '"' -f2)
+	_client_keepalive=$(grep "${_client_peer}_keepalive=" ${_client_file} | cut -d '"' -f2)
+	_client_preshared=$(grep "${_client_peer}_preshared=" "${_client_file}" | cut -d '"' -f2)
 
 	if [ -n "${_client_privkey}" ]; then
 		util::create::dire "${ETCPATH}/peers/${_client_group}"

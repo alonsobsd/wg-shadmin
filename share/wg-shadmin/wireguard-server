@@ -76,12 +76,12 @@ server::generate::config() {
 
 		for _host in ${_host_list}
 		do
-			_host_active=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+			_host_active=$(grep $(grep "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
 			if [ "${_host_active}" = "YES" ]; then
 				_ip_address=${_host}
-				_private_key=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_privkey= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
-				_preshared_key=$(grep -w $(grep -w "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_preshared= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+				_private_key=$(grep $(grep "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_privkey= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+				_preshared_key=$(grep $(grep "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_preshared= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 				_public_key=$(client::generate::pubkey "${_private_key}")
 
 				echo "[Peer]" >> "${WG_ETC}/${wireguard_interface}.conf"

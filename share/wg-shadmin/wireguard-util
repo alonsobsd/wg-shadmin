@@ -177,7 +177,7 @@ util::config::get() {
         local _variable="$2"
         local _value
 
-	_value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
+	_value=$(grep "${_variable}" ${_file} | cut -d '"' -f2)
 
 	echo ${_value}
 }
@@ -188,7 +188,7 @@ util::config::get::exists() {
         local _value
 
 	if [ -f ${_file} ]; then
-	        _value=$(grep -w "${_variable}" ${_file} | cut -d '"' -f2)
+	        _value=$(grep "${_variable}" ${_file} | cut -d '"' -f2)
 
 		if [ -z "${_value}" ]; then
 			_value=1
