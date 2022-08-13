@@ -87,6 +87,20 @@ util::apply::config() {
 	return 0
 }
 
+util::check::status() {
+	local _status="$1"
+	local _code="0"
+
+	if [ ${_status} -eq 1 ]; then
+		_code=1
+	elif [ ${_status} -eq 123 ]; then
+		_code=1
+	fi
+
+	echo ${_code}
+}
+
+
 util::make::backup() {
 	local _date="$1"
 
@@ -103,8 +117,15 @@ util::pause() {
 
 util::remove::lines() {
 	local _file="$1"
+	local _sed_parameter
 
-	sed -i "" '/^$/d' ${_file}
+	if [ "${_os_name}" = "OpenBSD" ];then
+		_sed_parameter="-i"
+	else
+		_sed_parameter="-i "
+	fi
+
+	sed ${_sed_parameter}"" '/^$/d' ${_file}
 }
 
 util::remove::config::files() {
@@ -166,10 +187,17 @@ util::config::set() {
 	local _file="$1"
 	local _variable="$2"
 	local _value="$3"
+	local _sed_parameter
+
+	if [ ${_os_name} = "OpenBSD" ];then
+		_sed_parameter="-i"
+	else
+		_sed_parameter="-i "
+	fi
 
 	_value=$(echo ${_value} | sed -e "s#/#\\\/#g")
 
-	sed -e "/^${_variable}=/s/=.*/=\"${_value}\"/" -i "" ${_file}
+	sed -e "/^${_variable}=/s/=.*/=\"${_value}\"/" ${_sed_parameter}"" ${_file}
 }
 
 util::config::get() {

@@ -316,6 +316,7 @@ tui::group::edit() {
         local _group
         local _group_list=""
         local _group_output
+	local _status
 
         _group_list=$(group::list "${ETCPATH}/wg-shadmin-groups.conf")
 
@@ -324,9 +325,11 @@ tui::group::edit() {
                 --radiolist "Select one group:" 15 60 10 \
         3>&1 1>&2 2>&3)
 
-        if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
-                return 1
-        fi
+	_status=$(util::check::status "$?")
+
+	if [ "${_status}" -eq "1" ]; then
+		return 1
+	fi
 
 	_group_old_desc=$(util::config::get "${ETCPATH}/wg-shadmin-groups.conf" "${_group_output}")
 	_group_desc=$(${DIALOG_BIN} --nocancel --title "Edit group ${_group_output}" --inputbox "Put new group description:" 10 50 "${_group_old_desc}" 3>&1 1>&2 2>&3)
@@ -524,6 +527,7 @@ tui::client::edit() {
         local _group_desc
         local _group
         local _group_list=""
+	local _status
 
 	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
 
@@ -534,9 +538,11 @@ tui::client::edit() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-                if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
-                        return 1
-                fi
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
+			return 1
+		fi
 
                 if [ -z ${_client_peer} ]; then
                         tui::infobox "Update client" "You must select a peer" "2"
@@ -608,7 +614,9 @@ tui::client::edit() {
                                 --radiolist "Select one group (current: ${_client_group}):" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
@@ -651,6 +659,7 @@ tui::client::activate() {
         local _client_list
         local _client_peer
 	local _peer
+	local _status
 
         _client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf" "0")
 
@@ -661,7 +670,9 @@ tui::client::activate() {
                                 --checklist "Select one or more peers:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
@@ -684,6 +695,7 @@ tui::client::generate::file() {
 	local _client_list
 	local _client_peer
 	local _client_active
+	local _status
 
 	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
 
@@ -694,7 +706,9 @@ tui::client::generate::file() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
@@ -744,6 +758,7 @@ tui::client::generate::qrcode() {
 	local _client_list
 	local _client_peer
 	local _client_active
+	local _status
 
 	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
 
@@ -754,7 +769,9 @@ tui::client::generate::qrcode() {
 			--radiolist "Select one peer:" 15 60 10 \
 		3>&1 1>&2 2>&3)
 
-		if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
@@ -785,6 +802,7 @@ tui::client::view() {
 	local _client_list
 	local _client_peer
 	local _flag
+	local _status
 
 	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
 
@@ -795,8 +813,10 @@ tui::client::view() {
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-                if [ "$?" -eq "1" ] | [ "$?" -eq "123" ]; then
-                        return 1
+		_status=$(util::check::status "$?")
+
+		if [ "${_status}" -eq "1" ]; then
+			return 1
 		else
 			_client_ip=$(grep "${_client_peer}_ip=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_active=$(grep "${_client_peer}_active=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)

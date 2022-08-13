@@ -167,8 +167,15 @@ client::list() {
 client::remove() {
 	local _client_peer="$1"
 	local _network_file="$2"
+	local _sed_parameter
 
-	sed -i "" "/${_client_peer}/d" "${_network_file}"
+	if [ ${_os_name} = "OpenBSD" ];then
+		_sed_parameter="-i"
+	else
+		_sed_parameter="-i "
+	fi
+
+	sed -i ${_sed_parameter}"" "/${_client_peer}/d" "${_network_file}"
 }
 
 client::save() {
