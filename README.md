@@ -24,10 +24,10 @@ If you want run wg-shadmin, you need install wireguard-tools[-lite], wireguard-k
 ### On FreeBSD
 #### Installing dependencies
 ```sh
-# pkg install wireguard-kmod
+# pkg install wireguard-kmod # Only for FreeBSD <= 12.x
 # pkg install wireguard-tools-lite
 ```
-dialog tool is part of base system on FreeBSD
+dialog tool is part of base system on FreeBSD. Also devel/cdialog can be used with wg-shadmin.
 
 #### Wireguard initial configuration 
 We need add somes lines to /etc/rc.conf
