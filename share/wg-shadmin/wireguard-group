@@ -2,7 +2,7 @@
 #--------------------------------------------------------------------------------+
 # BSD 3-Clause License
 #
-# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# Copyright (c) 2022,2023 Alonso Cárdenas (acardenas@bsd-peru.org)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,22 +30,22 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-group::generate::id() {
+group_generate_id() {
 	local _file="$1"
 	local _n
 
 	_n=0
 
-        if [ -f "${_file}" ]; then
+	if [ -f "${_file}" ]; then
 		_n=$(tail -n 1 ${_file} | cut -d '=' -f1 | cut -d '-' -f2)
-        fi
+	fi
 
 	_n=$((_n+1))
 
 	echo ${_n}
 }
 
-group::list() {
+group_list() {
 	local _file="$1"
 	local _group
 	local _group_name
@@ -69,11 +69,11 @@ group::list() {
 	echo ${_group_list}
 }
 
-group::save() {
+group_save() {
 	local _group_name="$1"
-        local _group_desc="$2"
+	local _group_desc="$2"
 
-        util::create::file "${ETCPATH}/wg-shadmin-groups.conf"
+	util_create_file "${ETCPATH}/wg-shadmin-groups.conf"
 
 	echo "${_group_name}=\"${_group_desc}\"" >> "${ETCPATH}/wg-shadmin-groups.conf"
 

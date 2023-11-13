@@ -2,7 +2,7 @@
 #--------------------------------------------------------------------------------+
 # BSD 3-Clause License
 #
-# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# Copyright (c) 2022,2023 Alonso Cárdenas (acardenas@bsd-peru.org)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,32 +30,32 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-server::init::config() {
+server_init_config() {
 	local _server_ip="$1"
 	local _server_port="$2"
 	local _server_interface="$3"
 	local _server_network="$4"
 	local _server_interface_ip="$5"
 
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_endpoint" "${_server_ip}"
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_port" "${_server_port}"
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface" "${_server_interface}"
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface_ip" "${_server_interface_ip}"
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_network" "${_server_network}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_endpoint" "${_server_ip}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_port" "${_server_port}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface" "${_server_interface}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_interface_ip" "${_server_interface_ip}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_network" "${_server_network}"
 }
 
-server::init::config::keys() {
+server_init_config_keys() {
 	local _server_privkey
 	local _server_pubkey
 
-	_server_privkey=$(server::generate::privkey)
-        _server_pubkey=$(server::generate::pubkey ${_server_privkey})
+	_server_privkey=$(server_generate_privkey)
+	_server_pubkey=$(server_generate_pubkey ${_server_privkey})
 
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_privkey" "${_server_privkey}"
-	util::config::set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_pubkey" "${_server_pubkey}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_privkey" "${_server_privkey}"
+	util_config_set "${ETCPATH}/wg-shadmin.conf" "wireguard_server_pubkey" "${_server_pubkey}"
 }
 
-server::generate::config() {
+server_generate_config() {
 	local _client_file="$1"
 	local _host_list
 	local _host_active
@@ -67,7 +67,7 @@ server::generate::config() {
 	if [ -f "${_client_file}" ]; then
 		_host_list=$(grep "peer.*_ip=" ${_client_file} | cut -d '"' -f2 | sort -t . -k 3,3n -k 4,4n)
 
-		util::create::file "${WG_ETC}/${wireguard_interface}.conf"
+		util_create_file "${WG_ETC}/${wireguard_interface}.conf"
 
 		echo "[Interface]" > "${WG_ETC}/${wireguard_interface}.conf"
 		echo "PrivateKey = ${wireguard_server_privkey}" >> "${WG_ETC}/${wireguard_interface}.conf"
@@ -82,7 +82,7 @@ server::generate::config() {
 				_ip_address=${_host}
 				_private_key=$(grep $(grep "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_privkey= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 				_preshared_key=$(grep $(grep "${_host}" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '_' -f1)_preshared= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
-				_public_key=$(client::generate::pubkey "${_private_key}")
+				_public_key=$(client_generate_pubkey "${_private_key}")
 
 				echo "[Peer]" >> "${WG_ETC}/${wireguard_interface}.conf"
 				echo "PublicKey = ${_public_key}" >> "${WG_ETC}/${wireguard_interface}.conf"
@@ -100,19 +100,19 @@ server::generate::config() {
 	fi
 }
 
-server::generate::privkey() {
-        local _server_private_key
+server_generate_privkey() {
+	local _server_private_key
 
-        _server_private_key=$(${WG_BIN} genkey)
+	_server_private_key=$(${WG_BIN} genkey)
 
-        echo ${_server_private_key}
+	echo ${_server_private_key}
 }
 
-server::generate::pubkey() {
-        local _server_private_key="$1"
-        local _server_public_key
+server_generate_pubkey() {
+	local _server_private_key="$1"
+	local _server_public_key
 
-        _server_public_key=$(echo ${_server_private_key} | ${WG_BIN} pubkey)
+	_server_public_key=$(echo ${_server_private_key} | ${WG_BIN} pubkey)
 
-        echo ${_server_public_key}
+	echo ${_server_public_key}
 }

@@ -2,7 +2,7 @@
 #--------------------------------------------------------------------------------+
 # BSD 3-Clause License
 #
-# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# Copyright (c) 2022,2023 Alonso Cárdenas (acardenas@bsd-peru.org)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -79,6 +79,6 @@ fi
 . "${LIBPATH}/wireguard-group"
 . "${LIBPATH}/wireguard-server"
 
-util::dependencies::check
+util_dependencies_check
 
-tui::init
+tui_init

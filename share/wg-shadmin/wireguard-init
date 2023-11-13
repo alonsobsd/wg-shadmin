@@ -2,7 +2,7 @@
 #--------------------------------------------------------------------------------+
 # BSD 3-Clause License
 #
-# Copyright (c) 2022, Alonso Cárdenas (acardenas@bsd-peru.org)
+# Copyright (c) 2022,2023 Alonso Cárdenas (acardenas@bsd-peru.org)
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,39 +30,39 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-tui::init() {
-        local _menu
+tui_init() {
+	local _menu
 
-        _menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
-                --title "Wireguard administration tool" \
-                --menu "Select one option:" 12 60 5 \
+	_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
+				--title "Wireguard administration tool" \
+				--menu "Select one option:" 12 60 5 \
                         1 "Server management" \
                         2 "Groups management" \
                         3 "Clients management" \
                         4 "Exit" \
         3>&1 1>&2 2>&3)
 
-        case ${_menu} in
-                1)      tui::server
-                        ;;
-                2)      tui::group
-                        ;;
-                3)      tui::client
-                        ;;
-                4)      echo "Bye"
-                        exit
-                        ;;
-        esac
+	case ${_menu} in
+		1)      tui_server
+			;;
+		2)      tui_group
+			;;
+		3)      tui_client
+			;;
+		4)      echo "Bye"
+			exit
+			;;
+	esac
 
-        tui::init
+	tui_init
 }
 
-tui::server() {
-        local _server_menu
+tui_server() {
+	local _server_menu
 
-        _server_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
-                --title "Server management" \
-                --menu "Select one option:" 12 60 5  \
+	_server_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
+				--title "Server management" \
+				--menu "Select one option:" 12 60 5  \
                         1 "Edit configuration" \
                         2 "Apply configuration" \
                         3 "Backup configuration files" \
@@ -70,21 +70,21 @@ tui::server() {
         3>&1 1>&2 2>&3)
 
         case ${_server_menu} in
-                1)      tui::server::edit
-			tui::server
-                        ;;
-		2)	tui::server::apply
-			tui::server
+        1)  tui_server_edit
+			tui_server
+            ;;
+		2)	tui_server_apply
+			tui_server
 			;;
-		3)	tui::server::backup
-			tui::server
+		3)	tui_server_backup
+			tui_server
 			;;
-		4)	tui::init
+		4)	tui_init
 			;;
         esac
 }
 
-tui::server::edit() {
+tui_server_edit() {
 	local _client_output
 	local _server_output
 	local _server_ip="$1"
@@ -111,6 +111,9 @@ tui::server::edit() {
 
 	while true
 	do
+		_check=0
+		_check_error=0
+
 		_server_output=$(${DIALOG_BIN} --ok-label "Next" \
 			--cancel-label "Cancel" \
 			--backtitle "Wireguard administration tool" \
@@ -123,28 +126,28 @@ tui::server::edit() {
 				"Server subnet IP:" 5 1 "${_server_subnet_ip}" 5 28 16 15 \
 		3>&1 1>&2 2>&3)
 
-	        if [ "$?" -eq "0" ]; then
+		if [ "$?" -eq "0" ]; then
 			_server_ip=$(echo "${_server_output}" | sed -n 1p)
 			_server_port=$(echo "${_server_output}" | sed -n 2p)
 			_server_interface=$(echo "${_server_output}" | sed -n 3p)
 			_server_subnet=$(echo "${_server_output}" | sed -n 4p)
 			_server_subnet_ip=$(echo "${_server_output}" | sed -n 5p)
 
-			_check=$(util::validate::ip::format "${_server_ip}")
+			_check=$(util_validate_ip_format "${_server_ip}")
 
 			if [ ${_check} -eq 1 ]; then
 				_msgcheck=${_msgcheck}"Server IP \"${_server_ip}\" address is not valid\n\n"
 				_check_error=1
 			fi
 
-			_check=$(util::validate::ip::format "${_server_subnet_ip}")
+			_check=$(util_validate_ip_format "${_server_subnet_ip}")
 
 			if [ ${_check} -eq 1 ]; then
 				_msgcheck=${_msgcheck}"Server subnet IP \"${_server_subnet_ip}\" address is not valid\n\n"
 				_check_error=1
 			fi
 
-			_check=$(util::check::host "${_server_subnet}" "${_server_subnet_ip}")
+			_check=$(util_check_host "${_server_subnet}" "${_server_subnet_ip}")
 
 			if [ ${_check} -eq 1 ]; then
 				_msgcheck=${_msgcheck}"Server subnet IP \"${_server_subnet_ip}\" is not part of subnet \"${_server_subnet}\" \n\n"
@@ -152,7 +155,7 @@ tui::server::edit() {
 			fi
 
 			if [ ${_check_error} -eq 1 ]; then
-				tui::infobox "Server management :: Error" "${_msgcheck}" "4"
+				tui_infobox "Server management - Error" "${_msgcheck}" "4"
 			else
 				break;
 			fi
@@ -190,10 +193,10 @@ tui::server::edit() {
 			fi
 
 			if [ ${_check_error} -eq 1 ]; then
-				tui::infobox "Server management :: Error" "${_msgcheck}" "4"
+				tui_infobox "Server management - Error" "${_msgcheck}" "4"
 			else
 				break;
-	                fi
+	        fi
 
 		else
 			return 1
@@ -201,32 +204,32 @@ tui::server::edit() {
 	done
 
 	if [ ${_continue} = 0 ]; then
-		server::init::config "${_server_ip}" "${_server_port}" "${_server_interface}" "${_server_subnet}" "${_server_subnet_ip}"
-		client::init::config "${_client_allowedips}" "${_client_dns}"
+		server_init_config "${_server_ip}" "${_server_port}" "${_server_interface}" "${_server_subnet}" "${_server_subnet_ip}"
+		client_init_config "${_client_allowedips}" "${_client_dns}"
 
-		tui::yesno "Server management" "Do you want generate server public and private keys?"
+		tui_yesno "Server management" "Do you want generate server public and private keys?"
 
-	        if [ "$?" -eq "0" ]; then
-			server::init::config::keys
-	        fi
+		if [ "$?" -eq "0" ]; then
+			server_init_config_keys
+		fi
 
-	        tui::infobox "Server management" "Changes were saved" "2"
+		tui_infobox "Server management" "Changes were saved" "2"
 	fi
 
 	return 0
 }
 
-tui::server::apply() {
-	server::generate::config "${ETCPATH}/wg-shadmin-clients.conf"
+tui_server_apply() {
+	server_generate_config "${ETCPATH}/wg-shadmin-clients.conf"
 
-	tui::infobox "Server management" "Server configuration file was generated" "2"
+	tui_infobox "Server management" "Server configuration file was generated" "2"
 
-	tui::yesno "Server management" "Do you want apply new server configuration file?"
+	tui_yesno "Server management" "Do you want apply new server configuration file?"
 
 	if [ "$?" -eq "0" ]; then
-		util::apply::config
+		util_apply_config
 
-		tui::infobox "Server management" "Server configuration was applied correctly" "2"
+		tui_infobox "Server management" "Server configuration was applied correctly" "2"
 
 		return 0
 	else
@@ -234,53 +237,53 @@ tui::server::apply() {
 	fi
 }
 
-tui::server::backup() {
+tui_server_backup() {
 	local _date
 
 	_date=$(date "+%Y%m%d%H%M")
 
-	tui::yesno "Server management" "Do you want to backup configuration files?"
+	tui_yesno "Server management" "Do you want to backup configuration files?"
 
 	if [ "$?" -eq "0" ]; then
-		util::make::backup "${_date}"
+		util_make_backup "${_date}"
 
-		tui::infobox "Server management" "Backup ${_date} was created correctly" "2"
-                return 0
+		tui_infobox "Server management" "Backup ${_date} was created correctly" "2"
+		return 0
 	else
 		return 1
 	fi
 }
 
-tui::group() {
-        local _group_menu
+tui_group() {
+	local _group_menu
 
-        _group_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
+	_group_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
                 --title "Group management" \
                 --menu "Select one option:" 12 60 5 \
                         1 "Add group" \
                         2 "Edit group" \
                         3 "Exit" \
-        3>&1 1>&2 2>&3)
+	3>&1 1>&2 2>&3)
 
-        case ${_group_menu} in
-                1)      tui::group::add
-			tui::group
-                        ;;
-                2)      tui::group::edit
-			tui::group
-                        ;;
-                3)      tui::init
-                        ;;
-        esac
+	case ${_group_menu} in
+		1)	tui_group_add
+			tui_group
+			;;
+		2)	tui_group_edit
+			tui_group
+			;;
+		3)	tui_init
+			;;
+	esac
 
-        echo ${_group_menu}
+	echo ${_group_menu}
 }
 
-tui::group::add() {
+tui_group_add() {
 	local _group_output
 	local _n
 
-	_n=$(group::generate::id "${ETCPATH}/wg-shadmin-groups.conf")
+	_n=$(group_generate_id "${ETCPATH}/wg-shadmin-groups.conf")
 
 	while true
 	do
@@ -293,59 +296,62 @@ tui::group::add() {
 		if [ -n "${_group_output}" ]; then
 			break;
 		else
-			tui::infobox "Group management" "Group name can not be empty" "2"
+			tui_infobox "Group management" "Group name can not be empty" "2"
 		fi
 	done
 
-	tui::yesno "Group management" "Do you want add ${_group_output} group?"
+	tui_yesno "Group management" "Do you want add ${_group_output} group?"
 
 	if [ "$?" -eq "0" ]; then
-		group::save "group-${_n}" "${_group_output}"
+		group_save "group-${_n}" "${_group_output}"
 
-		tui::infobox "Group management" "New group ${group_output} was saved" "2"
+		tui_infobox "Group management" "New group ${group_output} was saved" "2"
 
 		return 0
 	fi
 }
 
-tui::group::edit() {
-        local _group_file="$1"
-        local _group_name
-        local _group_desc
+tui_group_edit() {
+	local _group_file="$1"
+	local _group_name
+	local _group_desc
 	local _group_old_desc
-        local _group
-        local _group_list=""
-        local _group_output
+	local _group
+	local _group_list=""
+	local _group_output
 	local _status
 
-        _group_list=$(group::list "${ETCPATH}/wg-shadmin-groups.conf")
+	_group_list=$(group_list "${ETCPATH}/wg-shadmin-groups.conf")
 
-        _group_output=$(echo ${_group_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
-                --title "Group management" \
-                --radiolist "Select one group:" 15 60 10 \
-        3>&1 1>&2 2>&3)
+	while [ ${_group_list} != "" ];
+	do
+		_group_output=$(echo ${_group_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
+		        --title "Group management" \
+			--radiolist "Select one group:" 15 60 10 \
+		3>&1 1>&2 2>&3)
 
-	_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
-	if [ "${_status}" -eq "1" ]; then
-		return 1
-	fi
+		if [ "${_status}" -eq "1" ]; then
+			return 1
+		fi
 
-	_group_old_desc=$(util::config::get "${ETCPATH}/wg-shadmin-groups.conf" "${_group_output}")
-	_group_desc=$(${DIALOG_BIN} --nocancel --title "Edit group ${_group_output}" --inputbox "Put new group description:" 10 50 "${_group_old_desc}" 3>&1 1>&2 2>&3)
+		_group_old_desc=$(util_config_get "${ETCPATH}/wg-shadmin-groups.conf" "${_group_output}")
+		_group_desc=$(${DIALOG_BIN} --nocancel --title "Edit group ${_group_output}" --inputbox "Put new group description:" 10 50 "${_group_old_desc}" 3>&1 1>&2 2>&3)
 
-	util::config::set "${ETCPATH}/wg-shadmin-groups.conf" "${_group_output}" "${_group_desc}"
+		util_config_set "${ETCPATH}/wg-shadmin-groups.conf" "${_group_output}" "${_group_desc}"
 
-	tui::infobox "Group configuration" "${_group_output} change was saved" "2"
+		tui_infobox "Group configuration" "${_group_output} change was saved" "2"
+	done
 
 	return 0
 }
 
 
-tui::client() {
-        local _client_menu
+tui_client() {
+	local _client_menu
 
-        _client_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
+	_client_menu=$(${DIALOG_BIN} --nocancel --backtitle "Wireguard administration tool" \
                 --title "Client management" \
                 --menu "Select one option:" 15 60 10 \
                         1 "Add client" \
@@ -356,38 +362,39 @@ tui::client() {
                         6 "Generate client qr code" \
                         7 "View clients" \
                         8 "Exit" \
-        3>&1 1>&2 2>&3)
 
-        case ${_client_menu} in
-                1)      tui::client::add
-			tui::client
+	3>&1 1>&2 2>&3)
+
+	case ${_client_menu} in
+		1)  tui_client_add
+			tui_client
 			;;
-                2)      tui::client::edit
-			tui::client
-                        ;;
-                3)      tui::client::activate
-			tui::client
-                        ;;
-                4)      tui::client::generate::file
-			tui::client
-                        ;;
-                5)      tui::client::generate::files
-			tui::client
-                        ;;
-                6)      tui::client::generate::qrcode
-			tui::client
-                        ;;
-                7)      tui::client::view
-			tui::client
-                        ;;
-                8)      tui::init
-                        ;;
-        esac
+		2)	tui_client_edit
+			tui_client
+			;;
+		3)	tui_client_activate
+			tui_client
+			;;
+		4)	tui_client_generate_file
+			tui_client
+			;;
+		5)	tui_client_generate_files
+			tui_client
+			;;
+		6)	tui_client_generate_qrcode
+			tui_client
+			;;
+		7)	tui_client_view
+			tui_client
+			;;
+		8)	tui_init
+			;;
+	esac
 
-        echo ${_client_menu}
+	echo ${_client_menu}
 }
 
-tui::client::add() {
+tui_client_add() {
 	local _client_output=""
 	local _client_ip
 	local _client_fullname
@@ -404,9 +411,9 @@ tui::client::add() {
 	local _check=0
 	local _n
 
-	_client_ip=$(client::generate::ip "${ETCPATH}/wg-shadmin-clients.conf")
+	_client_ip=$(client_generate_ip "${ETCPATH}/wg-shadmin-clients.conf")
 
-	while true
+	while [ "${_client_ip}" != "" ];
 	do
 		_client_ip=$(${DIALOG_BIN} --title "Add client" --inputbox "Put client ip address:" 10 60 "${_client_ip}" 3>&1 1>&2 2>&3)
 
@@ -414,17 +421,17 @@ tui::client::add() {
 			return 1
 		fi
 
-                _client_ip=$(util::validate::ip::format "${_client_ip}")
-		_server_subnet=$(util::config::get "${ETCPATH}/wg-shadmin.conf" "wireguard_network")
-		_check=$(util::config::get::exists "${ETCPATH}/wg-shadmin-clients.conf" "${_client_ip}")
+                _client_ip=$(util_validate_ip_format "${_client_ip}")
+		_server_subnet=$(util_config_get "${ETCPATH}/wg-shadmin.conf" "wireguard_network")
+		_check=$(util_config_get_exists "${ETCPATH}/wg-shadmin-clients.conf" "${_client_ip}")
 
 		if [ ${_client_ip} = 1 ] || [ ${_check} -eq 0 ]; then
-			tui::infobox "Add client :: Error" "IP address is not valid or already is used by another peer" "3"
+			tui_infobox "Add client - Error" "IP address is not valid or already is used by another peer" "3"
 		else
-			_check=$(util::check::host "${_server_subnet}" "${_client_ip}")
+			_check=$(util_check_host "${_server_subnet}" "${_client_ip}")
 
 			if [ ${_check} -eq 1 ]; then
-				tui::infobox "Add client :: Error" "Server subnet IP ${_client_ip} is not part of subnet ${_server_subnet} \n\n" "3"
+				tui_infobox "Add client - Error" "Server subnet IP ${_client_ip} is not part of subnet ${_server_subnet} \n\n" "3"
 			else
 				break;
 			fi
@@ -433,7 +440,7 @@ tui::client::add() {
 
 	while true
 	do
-	        _client_fullname=$(${DIALOG_BIN} --title "Add client" --inputbox "Put user full name:" 10 60 3>&1 1>&2 2>&3)
+		_client_fullname=$(${DIALOG_BIN} --title "Add client" --inputbox "Put user full name:" 10 60 3>&1 1>&2 2>&3)
 
 		if [ "$?" -eq "1" ]; then
 			return 1
@@ -442,37 +449,37 @@ tui::client::add() {
 		if [ -n ${_group_output} ]; then
 			break;
 		else
-			tui::infobox "Add client" "User full name can not be empty" "2"
+			tui_infobox "Add client" "User full name can not be empty" "2"
 		fi
 	done
 
-        tui::yesno "Add client" "Do you want add Keep Alive option?"
+	tui_yesno "Add client" "Do you want add Keep Alive option?"
 
-        if [ "$?" -eq "0" ]; then
-                _client_keepalive=25
-        else
-                _client_keepalive=0
-        fi
+	if [ "$?" -eq "0" ]; then
+		_client_keepalive=25
+	else
+		_client_keepalive=0
+	fi
 
-        tui::yesno "Add client" "Do you want generate a preshared key?"
+	tui_yesno "Add client" "Do you want generate a preshared key?"
 
-        if [ "$?" -eq "0" ]; then
-                _client_preshared=YES
-        else
-                _client_preshared=NO
-        fi
+	if [ "$?" -eq "0" ]; then
+		_client_preshared=YES
+	else
+		_client_preshared=NO
+	fi
 
-	tui::yesno "Add client" "Do you want activate this peer by default?"
+	tui_yesno "Add client" "Do you want activate this peer by default?"
 
 	if [ "$?" -eq "0" ]; then
 		_client_active=YES
-        else
+	else
 		_client_active=NO
-        fi
+	fi
 
-        _group_list=$(group::list "${ETCPATH}/wg-shadmin-groups.conf")
+	_group_list=$(group_list "${ETCPATH}/wg-shadmin-groups.conf")
 
-	while true
+	while [ ${_group_list} != "" ];
 	do
 		_client_group=$(echo ${_group_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
 			--title "Add client" \
@@ -480,7 +487,7 @@ tui::client::add() {
 		3>&1 1>&2 2>&3)
 
 		if [ -z ${_client_group} ]; then
-			tui::infobox "Add client" "You must select a group" "2"
+			tui_infobox "Add client" "You must select a group" "2"
 		else
 			break;
 		fi
@@ -497,7 +504,7 @@ tui::client::add() {
 			"Client keepalive:" 4 1 "${_client_keepalive}" 4 25 5 4 2 \
 			"Client preshared:" 5 1 "${_client_preshared}" 5 25 5 4 2 \
 			"Client group:" 6 1 "${_client_group}" 6 25 23 22 2 \
-		3>&1 1>&2 2>&3)
+	3>&1 1>&2 2>&3)
 
 	if [ "$?" -eq "0" ]; then
 		_client_ip=$(echo "${_client_output}" | sed -n 1p)
@@ -505,48 +512,49 @@ tui::client::add() {
 		_client_keepalive=$(echo "${_client_output}" | sed -n 4p)
 		_client_group=$(echo "${_client_output}" | sed -n 6p)
 
-		client::save "${_client_ip}" "${_client_active}" "${_client_preshared}" "${_client_keepalive}" "${_client_fullname}" "${_client_group}"
+		client_save "${_client_ip}" "${_client_active}" "${_client_preshared}" "${_client_keepalive}" "${_client_fullname}" "${_client_group}"
 
-		tui::infobox "Add client" "New peer was added" "2"
+		tui_infobox "Add client" "New peer was added" "2"
 		return 0
 	else
-                return 1
+	        return 1
 	fi
 }
 
-tui::client::edit() {
-        local _client_output=""
-        local _client_ip
-        local _client_fullname
-        local _client_keepalive
-        local _client_preshared
+tui_client_edit() {
+	local _client_output=""
+	local _client_ip
+	local _client_fullname
+	local _client_keepalive
+	local _client_preshared
 	local _client_active
-        local _client_group
-        local _client_peer
-        local _group_name
-        local _group_desc
-        local _group
-        local _group_list=""
+	local _client_group
+	local _client_peer
+	local _group_name
+	local _group_desc
+	local _group
+	local _group_list=""
 	local _status
+	local _selected=1
 
-	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
+	_client_list=$(client_list "${ETCPATH}/wg-shadmin-clients.conf")
 
-        while true
-        do
-                _client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
-                                --title "Update client" \
-                                --radiolist "Select one peer:" 15 60 10 \
-                                3>&1 1>&2 2>&3)
+	while [ "${_client_list}" != "" ]
+	do
+		_client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
+			--title "Update client" \
+			--radiolist "Select one peer:" 15 60 10 \
+		3>&1 1>&2 2>&3)
 
-		_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
 		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
-                if [ -z ${_client_peer} ]; then
-                        tui::infobox "Update client" "You must select a peer" "2"
-                else
+		if [ -z ${_client_peer} ]; then
+			tui_infobox "Update client" "You must select a peer" "2"
+		else
 			_client_ip=$(grep "${_client_peer}_ip=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_active=$(grep "${_client_peer}_active=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_privkey=$(grep "${_client_peer}_privkey=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
@@ -554,190 +562,193 @@ tui::client::edit() {
 			_client_keepalive=$(grep "${_client_peer}_keepalive=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_fullname=$(grep "${_client_peer}_fullname=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 			_client_group=$(grep "${_client_peer}_group=" ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
-                        break;
-                fi
-        done
+			_selected=0
+			break;
+		fi
+	done
 
-        while true
-        do
-                _client_fullname=$(${DIALOG_BIN} --title "Update client" --inputbox "Put user full name:" 10 60 "${_client_fullname}" 3>&1 1>&2 2>&3)
+	while [ ${_selected} -eq 0 ];
+	do
+		_client_fullname=$(${DIALOG_BIN} --title "Update client" --inputbox "Put user full name:" 10 60 "${_client_fullname}" 3>&1 1>&2 2>&3)
 
-                if [ "$?" -eq "1" ]; then
-                        return 1
-                fi
-
-                if [ -n ${_group_output} ]; then
-                        break;
-                else
-                        tui::infobox "Update client" "User full name can not be empty" "2"
-                fi
-        done
-
-        tui::yesno "Update client" "Do you want add Keep Alive option?"
-
-        if [ "$?" -eq "0" ]; then
-                _client_keepalive=25
-        else
-                _client_keepalive=0
-        fi
-
-	tui::yesno "Update client" "Do you want generate a new private key?"
-
-	if [ "$?" -eq "0" ]; then
-                _client_privkey=YES
-        else
-                _client_privkey=NO
-        fi
-
-        tui::yesno "Update client" "Do you want generate a preshared key?"
-
-        if [ "$?" -eq "0" ]; then
-                _client_preshared=YES
-        else
-                _client_preshared=NO
-        fi
-
-	tui::yesno "Add client" "Do you want activate this peer by default?"
-
-	if [ "$?" -eq "0" ]; then
-		_client_active=YES
-        else
-		_client_active=NO
-        fi
-
-        _group_list=$(group::list "${ETCPATH}/wg-shadmin-groups.conf")
-
-        while true
-        do
-                _client_group=$(echo ${_group_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
-                                --title "Update client" \
-                                --radiolist "Select one group (current: ${_client_group}):" 15 60 10 \
-                                3>&1 1>&2 2>&3)
-
-		_status=$(util::check::status "$?")
-
-		if [ "${_status}" -eq "1" ]; then
+		if [ "$?" -eq "1" ]; then
 			return 1
 		fi
 
-                if [ -z ${_client_group} ]; then
-                        tui::infobox "Update client" "You must select a group" "2"
-                else
-                        break;
-                fi
-        done
+		if [ -n ${_group_output} ]; then
+			break;
+		else
+			tui_infobox "Update client" "User full name can not be empty" "2"
+		fi
 
-        _client_output=$(${DIALOG_BIN} --ok-label "Update" \
-                        --cancel-label "Cancel" \
-                        --backtitle "Wireguard administration tool" \
-                        --title "Update client" \
-                        --mixedform "Update configuration" 15 60 0 \
-                                        "Client IP:" 1 1 "${_client_ip}" 1 25 16 15 2 \
-                                        "Client active:" 2 1 "${_client_active}" 2 25 16 15 2 \
-                                        "Client fullname:" 3 1 "${_client_fullname}" 3 25 23 22 0 \
-                                        "Client keepalive:" 4 1 "${_client_keepalive}" 4 25 5 4 2 \
-                                        "Client privkey:" 5 1 "${_client_privkey}" 5 25 5 4 2 \
-                                        "Client preshared:" 6 1 "${_client_preshared}" 6 25 5 4 2 \
-                                        "Client group:" 7 1 "${_client_group}" 7 25 23 22 2 \
-                        3>&1 1>&2 2>&3)
+		tui_yesno "Update client" "Do you want add Keep Alive option?"
 
-        if [ "$?" -eq "0" ]; then
-                _client_fullname=$(echo "${_client_output}" | sed -n 3p)
-                _client_keepalive=$(echo "${_client_output}" | sed -n 4p)
+		if [ "$?" -eq "0" ]; then
+			_client_keepalive=25
+		else
+			_client_keepalive=0
+		fi
 
-		client::update "${_client_peer}" "${_client_active}" "${_client_privkey}" "${_client_preshared}" "${_client_keepalive}" "${_client_fullname}" "${_client_group}"
+		tui_yesno "Update client" "Do you want generate a new private key?"
 
-                tui::infobox "Update client" "Peer ${_client_peer} was updated" "2"
+		if [ "$?" -eq "0" ]; then
+			_client_privkey=YES
+		else
+			_client_privkey=NO
+		fi
 
-                return 0
-        else
-                return 1
-        fi
+		tui_yesno "Update client" "Do you want generate a preshared key?"
+
+		if [ "$?" -eq "0" ]; then
+			_client_preshared=YES
+		else
+			_client_preshared=NO
+		fi
+
+		tui_yesno "Add client" "Do you want activate this peer by default?"
+
+		if [ "$?" -eq "0" ]; then
+			_client_active=YES
+		else
+			_client_active=NO
+		fi
+
+		_group_list=$(group_list "${ETCPATH}/wg-shadmin-groups.conf")
+
+		while [ ${_group_list} != "" ];
+		do
+			_client_group=$(echo ${_group_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
+				--title "Update client" \
+				--radiolist "Select one group (current: ${_client_group}):" 15 60 10 \
+			3>&1 1>&2 2>&3)
+
+			_status=$(util_check_status "$?")
+
+			if [ "${_status}" -eq "1" ]; then
+				return 1
+			fi
+
+			if [ -z ${_client_group} ]; then
+				tui_infobox "Update client" "You must select a group" "2"
+			else
+				break;
+			fi
+		done
+
+		_client_output=$(${DIALOG_BIN} --ok-label "Update" \
+			--cancel-label "Cancel" \
+			--backtitle "Wireguard administration tool" \
+			--title "Update client" \
+			--mixedform "Update configuration" 15 60 0 \
+				"Client IP:" 1 1 "${_client_ip}" 1 25 16 15 2 \
+				"Client active:" 2 1 "${_client_active}" 2 25 16 15 2 \
+				"Client fullname:" 3 1 "${_client_fullname}" 3 25 23 22 0 \
+				"Client keepalive:" 4 1 "${_client_keepalive}" 4 25 5 4 2 \
+				"Client privkey:" 5 1 "${_client_privkey}" 5 25 5 4 2 \
+				"Client preshared:" 6 1 "${_client_preshared}" 6 25 5 4 2 \
+				"Client group:" 7 1 "${_client_group}" 7 25 23 22 2 \
+		3>&1 1>&2 2>&3)
+
+		if [ "$?" -eq "0" ]; then
+			_client_fullname=$(echo "${_client_output}" | sed -n 3p)
+			_client_keepalive=$(echo "${_client_output}" | sed -n 4p)
+
+			client_update "${_client_peer}" "${_client_active}" "${_client_privkey}" "${_client_preshared}" "${_client_keepalive}" "${_client_fullname}" "${_client_group}"
+
+			tui_infobox "Update client" "Peer ${_client_peer} was updated" "2"
+
+			return 0
+		else
+			return 1
+		fi
+	done
 }
 
-tui::client::activate() {
-        local _client_list
-        local _client_peer
+tui_client_activate() {
+	local _client_list
+	local _client_peer
 	local _peer
 	local _status
 
-        _client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf" "0")
+	_client_list=$(client_list "${ETCPATH}/wg-shadmin-clients.conf" "0")
 
-        while true
-        do
-                _client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
-                                --title "Enable/disable clients" \
-                                --checklist "Select one or more peers:" 15 60 10 \
-                                3>&1 1>&2 2>&3)
+	while [ ${_client_list} != "" ];
+	do
+		_client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
+			--title "Enable/disable clients" \
+			--checklist "Select one or more peers:" 15 60 10 \
+		3>&1 1>&2 2>&3)
 
-		_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
 		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
-		break;
-        done
+		util_config_set "${ETCPATH}/wg-shadmin-clients.conf" "peer.*_active" "NO"
 
-	util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "peer.*_active" "NO"
+		for _peer in $(echo ${_client_peer})
+		do
+			util_config_set "${ETCPATH}/wg-shadmin-clients.conf" "${_peer}_active" "YES"
+		done
 
-	for _peer in $(echo ${_client_peer})
-	do
-		util::config::set "${ETCPATH}/wg-shadmin-clients.conf" "${_peer}_active" "YES"
+		tui_infobox "Enable/disable clients" "Changes were saved" "2"
 	done
 
-	tui::infobox "Enable/disable clients" "Changes were saved" "2"
-
-        return 0
+	return 0
 }
 
-tui::client::generate::file() {
+tui_client_generate_file() {
 	local _client_list
 	local _client_peer
 	local _client_active
 	local _status
+	local _selected=1
 
-	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
+	_client_list=$(client_list "${ETCPATH}/wg-shadmin-clients.conf")
 
-        while true
-        do
+	while [ ${_client_list} != "" ];
+	do
                 _client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
                                 --title "Generate client file" \
                                 --radiolist "Select one peer:" 15 60 10 \
                                 3>&1 1>&2 2>&3)
 
-		_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
 		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
                 if [ -z ${_client_peer} ]; then
-                        tui::infobox "Generate client file" "You must select a peer" "2"
+                        tui_infobox "Generate client file" "You must select a peer" "2"
+			_selected=1
                 else
-                        break;
+			_selected=0
                 fi
-        done
 
-	_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+		if [ ${_selected} -eq 0 ]; then
+			_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
-	if [ "${_client_active}" = "YES" ]; then
-		client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
-		tui::infobox "Generate client file" "Configuration file of ${_client_peer} was generated" "2"
-		return 0
-	else
-		tui::infobox "Generate client file" "Configuration file was not generated because ${_client_peer} is not enabled." "3"
-		return 1
-	fi
+			if [ "${_client_active}" = "YES" ]; then
+				client_generate_file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
+				tui_infobox "Generate client file" "Configuration file of ${_client_peer} was generated" "2"
+				return 0
+			else
+				tui_infobox "Generate client file" "Configuration file was not generated because ${_client_peer} is not enabled." "3"
+				return 1
+			fi
+		fi
+	done
 }
 
-tui::client::generate::files() {
+tui_client_generate_files() {
 	local _client_list
 	local _client_peer
 	local _client_active
 	local _peer
 
-	util::remove::config::files
+	util_remove_config_files
 
 	_client_list=$(grep "peer.*_ip=" "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '_' -f1)
 
@@ -746,74 +757,78 @@ tui::client::generate::files() {
 		_client_active=$(grep ${_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
 
 		if [ "${_client_active}" = "YES" ]; then
-			client::generate::file "${_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
+			client_generate_file "${_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
 		fi
 	done
 
-	tui::infobox "Generate client files" "Configuration files of peers-enabled were generated" "2"
+	tui_infobox "Generate client files" "Configuration files of peers-enabled were generated" "2"
 	return 0
 }
 
-tui::client::generate::qrcode() {
+tui_client_generate_qrcode() {
 	local _client_list
 	local _client_peer
 	local _client_active
 	local _status
+	local _selected=1
 
-	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
+	_client_list=$(client_list "${ETCPATH}/wg-shadmin-clients.conf")
 
-	while true
+	while [ ${_client_list} != "" ];
 	do
 		_client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
 			--title "Generate qrcode client file" \
 			--radiolist "Select one peer:" 15 60 10 \
 		3>&1 1>&2 2>&3)
 
-		_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
 		if [ "${_status}" -eq "1" ]; then
 			return 1
 		fi
 
 		if [ -z ${_client_peer} ]; then
-			tui::infobox "Generate client file" "You must select a peer" "2"
+			tui_infobox "Generate client file" "You must select a peer" "2"
+			_selected=1
 		else
-			break;
+			_selected=0
                 fi
+
+		if [ ${_selected} -eq 0 ]; then
+			_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
+
+			if [ "${_client_active}" = "YES" ]; then
+				client_generate_file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
+				client_generate_qrcode "${ETCPATH}/peers/$(grep ${_client_peer}_group= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)/$(grep ${_client_peer}_ip= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2).conf"
+
+				util_pause
+
+				tui_infobox "Generate qrcode client file" "QRCode of ${_client_peer} was generated" "2"
+				return 0
+			else
+				tui_infobox "Generate qrcode client file" "QRCode was not generated because ${_client_peer} is not enable." "3"
+				return 1
+			fi
+		fi
 	done
-
-	_client_active=$(grep ${_client_peer}_active= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)
-
-	if [ "${_client_active}" = "YES" ]; then
-		client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
-		client::generate::qrcode "${ETCPATH}/peers/$(grep ${_client_peer}_group= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2)/$(grep ${_client_peer}_ip= ${ETCPATH}/wg-shadmin-clients.conf | cut -d '"' -f2).conf"
-
-		util::pause
-
-	        tui::infobox "Generate qrcode client file" "QRCode of ${_client_peer} was generated" "2"
-		return 0
-	else
-		tui::infobox "Generate qrcode client file" "QRCode was not generated because ${_client_peer} is not enable." "3"
-		return 1
-	fi
 }
 
-tui::client::view() {
+tui_client_view() {
 	local _client_list
 	local _client_peer
 	local _flag
 	local _status
 
-	_client_list=$(client::list "${ETCPATH}/wg-shadmin-clients.conf")
+	_client_list=$(client_list "${ETCPATH}/wg-shadmin-clients.conf")
 
-	while true
+	while [ ${_client_list} != "" ];
 	do
 		_client_peer=$(echo ${_client_list} | xargs ${DIALOG_BIN} --backtitle "Wireguard administration tool" \
-                                --title "View client file" \
-                                --radiolist "Select one peer:" 15 60 10 \
-                                3>&1 1>&2 2>&3)
+			--title "View client file" \
+			--radiolist "Select one peer:" 15 60 10 \
+	        3>&1 1>&2 2>&3)
 
-		_status=$(util::check::status "$?")
+		_status=$(util_check_status "$?")
 
 		if [ "${_status}" -eq "1" ]; then
 			return 1
@@ -849,37 +864,37 @@ tui::client::view() {
 
 			if [ "$?" -eq "0" ]; then
 				if [ "${_client_active}" = "YES" ]; then
-					client::generate::file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
+					client_generate_file "${_client_peer}" "${ETCPATH}/wg-shadmin-clients.conf"
 					less "${ETCPATH}/peers/$(grep ${_client_peer}_group "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2)/$(grep ${_client_peer}_ip "${ETCPATH}/wg-shadmin-clients.conf" | cut -d '"' -f2).conf"
 				else
-					tui::infobox "View client" "Can not view this file because ${_client_peer} is not enabled" "2"
+					tui_infobox "View client" "Can not view this file because ${_client_peer} is not enabled" "2"
 				fi
 			fi
-                fi
-        done
+	        fi
+	done
 
-        return 0
+	return 0
 }
 
-tui::yesno() {
-        local _title="$1"
-        local _message="$2"
+tui_yesno() {
+	local _title="$1"
+	local _message="$2"
 
-        ${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --yesno "${_message}" 7 40 3>&1 1>&2 2>&3
+	${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --yesno "${_message}" 7 40 3>&1 1>&2 2>&3
 }
 
-tui::message() {
-        local _title="$1"
-        local _message="$2"
+tui_message() {
+	local _title="$1"
+	local _message="$2"
 
-        ${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --msgbox  "${_message}" 5 50
+	${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --msgbox  "${_message}" 5 50
 }
 
-tui::infobox() {
-        local _title="$1"
-        local _message="$2"
+tui_infobox() {
+	local _title="$1"
+	local _message="$2"
 	local _seconds="$3"
 
-        ${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --infobox  "${_message}" 5 50
-        sleep ${_seconds}
+	${DIALOG_BIN} --backtitle "Wireguard administration tool" --title "${_title}" --infobox  "${_message}" 5 50
+	sleep ${_seconds}
 }
